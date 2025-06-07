@@ -29,6 +29,8 @@ func (s *APIV1Service) GetWorkspaceSetting(ctx context.Context, request *v1pb.Ge
 		_, err = s.Store.GetWorkspaceMemoRelatedSetting(ctx)
 	case storepb.WorkspaceSettingKey_STORAGE:
 		_, err = s.Store.GetWorkspaceStorageSetting(ctx)
+	case storepb.WorkspaceSettingKey_AI_MODEL:
+		// Do nothing.
 	default:
 		return nil, status.Errorf(codes.InvalidArgument, "unsupported workspace setting key: %v", workspaceSettingKey)
 	}
@@ -46,8 +48,8 @@ func (s *APIV1Service) GetWorkspaceSetting(ctx context.Context, request *v1pb.Ge
 		return nil, status.Errorf(codes.NotFound, "workspace setting not found")
 	}
 
-	// For storage setting, only host can get it.
-	if workspaceSetting.Key == storepb.WorkspaceSettingKey_STORAGE {
+	// For storage setting and AI model setting, only host can get it.
+	if workspaceSetting.Key == storepb.WorkspaceSettingKey_STORAGE || workspaceSetting.Key == storepb.WorkspaceSettingKey_AI_MODEL {
 		user, err := s.GetCurrentUser(ctx)
 		if err != nil {
 			return nil, status.Errorf(codes.Internal, "failed to get current user: %v", err)
@@ -95,6 +97,10 @@ func convertWorkspaceSettingFromStore(setting *storepb.WorkspaceSetting) *v1pb.W
 		workspaceSetting.Value = &v1pb.WorkspaceSetting_MemoRelatedSetting{
 			MemoRelatedSetting: convertWorkspaceMemoRelatedSettingFromStore(setting.GetMemoRelatedSetting()),
 		}
+	case *storepb.WorkspaceSetting_AiModelSetting:
+		workspaceSetting.Value = &v1pb.WorkspaceSetting_AiModelSetting{
+			AiModelSetting: convertWorkspaceAIModelSettingFromStore(setting.GetAiModelSetting()),
+		}
 	}
 	return workspaceSetting
 }
@@ -119,6 +125,10 @@ func convertWorkspaceSettingToStore(setting *v1pb.WorkspaceSetting) *storepb.Wor
 	case storepb.WorkspaceSettingKey_MEMO_RELATED:
 		workspaceSetting.Value = &storepb.WorkspaceSetting_MemoRelatedSetting{
 			MemoRelatedSetting: convertWorkspaceMemoRelatedSettingToStore(setting.GetMemoRelatedSetting()),
+		}
+	case storepb.WorkspaceSettingKey_AI_MODEL:
+		workspaceSetting.Value = &storepb.WorkspaceSetting_AiModelSetting{
+			AiModelSetting: convertWorkspaceAIModelSettingToStore(setting.GetAiModelSetting()),
 		}
 	}
 	return workspaceSetting
@@ -251,5 +261,27 @@ func convertWorkspaceMemoRelatedSettingToStore(setting *v1pb.WorkspaceMemoRelate
 		DisableMarkdownShortcuts: setting.DisableMarkdownShortcuts,
 		EnableBlurNsfwContent:    setting.EnableBlurNsfwContent,
 		NsfwTags:                 setting.NsfwTags,
+	}
+}
+
+func convertWorkspaceAIModelSettingFromStore(setting *storepb.WorkspaceAIModelSetting) *v1pb.WorkspaceAIModelSetting {
+	if setting == nil {
+		return nil
+	}
+	return &v1pb.WorkspaceAIModelSetting{
+		Model:   setting.Model,
+		ApiKey:  setting.ApiKey,
+		BaseUrl: setting.BaseUrl,
+	}
+}
+
+func convertWorkspaceAIModelSettingToStore(setting *v1pb.WorkspaceAIModelSetting) *storepb.WorkspaceAIModelSetting {
+	if setting == nil {
+		return nil
+	}
+	return &storepb.WorkspaceAIModelSetting{
+		Model:   setting.Model,
+		ApiKey:  setting.ApiKey,
+		BaseUrl: setting.BaseUrl,
 	}
 }

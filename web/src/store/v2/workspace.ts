@@ -15,6 +15,8 @@ export enum WorkspaceSettingKey {
   STORAGE = "STORAGE",
   /** MEMO_RELATED - MEMO_RELATED is the key for memo related settings. */
   MEMO_RELATED = "MEMO_RELATED",
+  /** AI_MODEL - AI_MODEL is the key for AI model settings. */
+  AI_MODEL = "AI_MODEL",
 }
 
 class LocalState {

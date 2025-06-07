@@ -1,5 +1,5 @@
 import { Tooltip } from "@mui/joy";
-import { EarthIcon, LibraryIcon, PaperclipIcon, UserCircleIcon } from "lucide-react";
+import { BotIcon, EarthIcon, LibraryIcon, PaperclipIcon, UserCircleIcon } from "lucide-react";
 import { observer } from "mobx-react-lite";
 import { useEffect } from "react";
 import { NavLink } from "react-router-dom";
@@ -54,6 +54,12 @@ const Navigation = observer((props: Props) => {
     title: t("common.resources"),
     icon: <PaperclipIcon className="w-6 h-auto opacity-70 shrink-0" />,
   };
+  const aiChatNavLink: NavLinkItem = {
+    id: "header-ai-chat",
+    path: Routes.AI_CHAT,
+    title: t("ai.chat"),
+    icon: <BotIcon className="w-6 h-auto opacity-70 shrink-0" />,
+  };
   const signInNavLink: NavLinkItem = {
     id: "header-auth",
     path: Routes.AUTH,
@@ -61,7 +67,7 @@ const Navigation = observer((props: Props) => {
     icon: <UserCircleIcon className="w-6 h-auto opacity-70 shrink-0" />,
   };
 
-  const navLinks: NavLinkItem[] = currentUser ? [homeNavLink, exploreNavLink, resourcesNavLink] : [exploreNavLink, signInNavLink];
+  const navLinks: NavLinkItem[] = currentUser ? [homeNavLink, exploreNavLink, resourcesNavLink, aiChatNavLink] : [exploreNavLink, signInNavLink];
 
   return (
     <header

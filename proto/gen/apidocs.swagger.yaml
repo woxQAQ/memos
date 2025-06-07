@@ -4,6 +4,7 @@ info:
   version: version not set
 tags:
   - name: ActivityService
+  - name: AIService
   - name: UserService
   - name: AuthService
   - name: IdentityProviderService
@@ -20,6 +21,126 @@ consumes:
 produces:
   - application/json
 paths:
+  /api/v1/ai/generate:
+    post:
+      summary: GenerateContent generates content from the AI.
+      operationId: AIService_GenerateContent
+      responses:
+        "200":
+          description: A successful response.(streaming responses)
+          schema:
+            type: object
+            properties:
+              result:
+                $ref: '#/definitions/v1GenerateContentResponse'
+              error:
+                $ref: '#/definitions/googlerpcStatus'
+            title: Stream result of v1GenerateContentResponse
+        default:
+          description: An unexpected error response.
+          schema:
+            $ref: '#/definitions/googlerpcStatus'
+      parameters:
+        - name: body
+          in: body
+          required: true
+          schema:
+            $ref: '#/definitions/v1GenerateContentRequest'
+      tags:
+        - AIService
+  /api/v1/ai/sessions:
+    get:
+      summary: ListChatSessions lists chat sessions for the current user.
+      operationId: AIService_ListChatSessions
+      responses:
+        "200":
+          description: A successful response.
+          schema:
+            $ref: '#/definitions/v1ListChatSessionsResponse'
+        default:
+          description: An unexpected error response.
+          schema:
+            $ref: '#/definitions/googlerpcStatus'
+      parameters:
+        - name: pageSize
+          description: The maximum number of sessions to return.
+          in: query
+          required: false
+          type: integer
+          format: int32
+        - name: pageToken
+          description: A page token from a previous call.
+          in: query
+          required: false
+          type: string
+      tags:
+        - AIService
+  /api/v1/ai/sessions/{uid}:
+    get:
+      summary: GetChatSession gets a specific chat session.
+      operationId: AIService_GetChatSession
+      responses:
+        "200":
+          description: A successful response.
+          schema:
+            $ref: '#/definitions/v1ChatSession'
+        default:
+          description: An unexpected error response.
+          schema:
+            $ref: '#/definitions/googlerpcStatus'
+      parameters:
+        - name: uid
+          description: The UID of the session to retrieve.
+          in: path
+          required: true
+          type: string
+      tags:
+        - AIService
+    delete:
+      summary: DeleteChatSession deletes a chat session.
+      operationId: AIService_DeleteChatSession
+      responses:
+        "200":
+          description: A successful response.
+          schema:
+            $ref: '#/definitions/v1DeleteChatSessionResponse'
+        default:
+          description: An unexpected error response.
+          schema:
+            $ref: '#/definitions/googlerpcStatus'
+      parameters:
+        - name: uid
+          description: The UID of the session to delete.
+          in: path
+          required: true
+          type: string
+      tags:
+        - AIService
+    patch:
+      summary: UpdateChatSession updates a chat session.
+      operationId: AIService_UpdateChatSession
+      responses:
+        "200":
+          description: A successful response.
+          schema:
+            $ref: '#/definitions/v1UpdateChatSessionResponse'
+        default:
+          description: An unexpected error response.
+          schema:
+            $ref: '#/definitions/googlerpcStatus'
+      parameters:
+        - name: uid
+          description: The UID of the session to update.
+          in: path
+          required: true
+          type: string
+        - name: body
+          in: body
+          required: true
+          schema:
+            $ref: '#/definitions/AIServiceUpdateChatSessionBody'
+      tags:
+        - AIService
   /api/v1/auth/signin:
     post:
       summary: SignIn signs in the user.
@@ -707,6 +828,8 @@ paths:
                 $ref: '#/definitions/apiv1WorkspaceStorageSetting'
               memoRelatedSetting:
                 $ref: '#/definitions/apiv1WorkspaceMemoRelatedSetting'
+              aiModelSetting:
+                $ref: '#/definitions/apiv1WorkspaceAIModelSetting'
             title: setting is the setting to update.
       tags:
         - WorkspaceSettingService
@@ -1907,6 +2030,12 @@ paths:
       tags:
         - ResourceService
 definitions:
+  AIServiceUpdateChatSessionBody:
+    type: object
+    properties:
+      title:
+        type: string
+        description: The new title of the session.
   ListNodeKind:
     type: string
     enum:
@@ -2243,6 +2372,18 @@ definitions:
       memoVisibility:
         type: string
         description: The default visibility of the memo.
+  apiv1WorkspaceAIModelSetting:
+    type: object
+    properties:
+      model:
+        type: string
+        description: model is the AI model name.
+      apiKey:
+        type: string
+        description: api_key is the API key for the AI model.
+      baseUrl:
+        type: string
+        description: base_url is the base URL for the AI model.
   apiv1WorkspaceCustomProfile:
     type: object
     properties:
@@ -2339,6 +2480,8 @@ definitions:
         $ref: '#/definitions/apiv1WorkspaceStorageSetting'
       memoRelatedSetting:
         $ref: '#/definitions/apiv1WorkspaceMemoRelatedSetting'
+      aiModelSetting:
+        $ref: '#/definitions/apiv1WorkspaceAIModelSetting'
   apiv1WorkspaceStorageSetting:
     type: object
     properties:
@@ -2563,6 +2706,45 @@ definitions:
         items:
           type: object
           $ref: '#/definitions/v1Node'
+  v1ChatMessage:
+    type: object
+    properties:
+      role:
+        type: string
+        description: The role of the message.
+      content:
+        type: string
+        description: The content of the message.
+      createdTime:
+        type: string
+        format: date-time
+        description: The timestamp when the message was created.
+  v1ChatSession:
+    type: object
+    properties:
+      uid:
+        type: string
+        description: The unique identifier for the session.
+      title:
+        type: string
+        description: The title of the session.
+      createdTime:
+        type: string
+        format: date-time
+        description: The timestamp when the session was created.
+      updatedTime:
+        type: string
+        format: date-time
+        description: The timestamp when the session was last updated.
+      status:
+        type: string
+        description: The status of the session.
+      messages:
+        type: array
+        items:
+          type: object
+          $ref: '#/definitions/v1ChatMessage'
+        description: The messages in the session.
   v1CodeBlockNode:
     type: object
     properties:
@@ -2582,6 +2764,8 @@ definitions:
         type: string
       url:
         type: string
+  v1DeleteChatSessionResponse:
+    type: object
   v1Direction:
     type: string
     enum:
@@ -2601,6 +2785,24 @@ definitions:
     properties:
       symbol:
         type: string
+  v1GenerateContentRequest:
+    type: object
+    properties:
+      messages:
+        type: array
+        items:
+          type: object
+          $ref: '#/definitions/v1ChatMessage'
+        description: The content of the request.
+      sessionUid:
+        type: string
+        description: Optional session UID to save the conversation.
+  v1GenerateContentResponse:
+    type: object
+    properties:
+      content:
+        type: string
+        description: The content of the response.
   v1HTMLElementNode:
     type: object
     properties:
@@ -2715,6 +2917,18 @@ definitions:
         items:
           type: object
           $ref: '#/definitions/v1UserStats'
+  v1ListChatSessionsResponse:
+    type: object
+    properties:
+      sessions:
+        type: array
+        items:
+          type: object
+          $ref: '#/definitions/v1ChatSession'
+        description: The list of sessions.
+      nextPageToken:
+        type: string
+        description: A token to retrieve the next page of results.
   v1ListIdentityProvidersResponse:
     type: object
     properties:
@@ -3210,6 +3424,12 @@ definitions:
         items:
           type: object
           $ref: '#/definitions/v1Node'
+  v1UpdateChatSessionResponse:
+    type: object
+    properties:
+      session:
+        $ref: '#/definitions/v1ChatSession'
+        description: The updated session.
   v1User:
     type: object
     properties:

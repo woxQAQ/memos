@@ -62,7 +62,7 @@ const ChatInput = observer(({ onSendMessage, disabled, placeholder, onFirstMessa
         ref={textareaRef}
         value={message}
         onChange={(e) => setMessage(e.target.value)}
-        onKeyPress={handleKeyPress}
+        onKeyDown={handleKeyPress}
         placeholder={placeholder || t("ai.type-message")}
         disabled={disabled}
         rows={1}

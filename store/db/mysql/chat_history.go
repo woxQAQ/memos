@@ -83,6 +83,10 @@ func (d *DB) ListChatSessions(ctx context.Context, find *store.FindChatSession) 
 		chatSessions = append(chatSessions, &chatSession)
 	}
 
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
 	return chatSessions, nil
 }
 
@@ -210,6 +214,10 @@ func (d *DB) ListChatMessages(ctx context.Context, find *store.FindChatMessage) 
 			return nil, err
 		}
 		chatMessages = append(chatMessages, &chatMessage)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, err
 	}
 
 	return chatMessages, nil

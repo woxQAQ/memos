@@ -322,7 +322,7 @@ Remember: Only add the title for the first response in a new conversation.`
 	return nil
 }
 
-// generateAndUpdateSessionTitle generates a concise title for the session using AI
+// generateAndUpdateSessionTitle generates a concise title for the session using AI.
 func (s *APIV1Service) generateAndUpdateSessionTitle(ctx context.Context, session *store.ChatSession, userMessages []*v1pb.ChatMessage, assistantResponse string, aiModelSetting *storepb.WorkspaceAIModelSetting, stream v1pb.AIService_GenerateContentServer) {
 	fmt.Printf("Starting title generation for session %s\n", session.UID)
 	// Create a prompt to generate a concise title
@@ -396,7 +396,7 @@ Title:`, userContent, assistantResponse)
 	}
 }
 
-func (s *APIV1Service) ListChatSessions(ctx context.Context, request *v1pb.ListChatSessionsRequest) (*v1pb.ListChatSessionsResponse, error) {
+func (s *APIV1Service) ListChatSessions(ctx context.Context, _ *v1pb.ListChatSessionsRequest) (*v1pb.ListChatSessionsResponse, error) {
 	user, err := s.GetCurrentUser(ctx)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to get user")
@@ -512,7 +512,7 @@ func (s *APIV1Service) DeleteChatSession(ctx context.Context, request *v1pb.Dele
 	return &v1pb.DeleteChatSessionResponse{}, nil
 }
 
-// Helper functions
+// Helper functions.
 func convertChatSessionToPb(session *store.ChatSession) *v1pb.ChatSession {
 	pbSession := &v1pb.ChatSession{
 		Uid:         session.UID,

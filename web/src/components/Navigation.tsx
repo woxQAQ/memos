@@ -67,7 +67,9 @@ const Navigation = observer((props: Props) => {
     icon: <UserCircleIcon className="w-6 h-auto opacity-70 shrink-0" />,
   };
 
-  const navLinks: NavLinkItem[] = currentUser ? [homeNavLink, exploreNavLink, resourcesNavLink, aiChatNavLink] : [exploreNavLink, signInNavLink];
+  const navLinks: NavLinkItem[] = currentUser
+    ? [homeNavLink, exploreNavLink, resourcesNavLink, aiChatNavLink]
+    : [exploreNavLink, signInNavLink];
 
   return (
     <header

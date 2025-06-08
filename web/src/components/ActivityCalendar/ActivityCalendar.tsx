@@ -146,7 +146,7 @@ export const ActivityCalendar = memo(
               ? date
               : t("memo.count-memos-in-date", {
                   count: count,
-                  memos: count === 1 ? t("common.memo") : t("common.memos"),
+                  memos: count === 1 ? "memo" : t("common.memos"),
                   date: date,
                 }).toLowerCase();
 

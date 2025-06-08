@@ -58,7 +58,6 @@ func (d *DB) ListChatSessions(ctx context.Context, find *store.FindChatSession) 
 	}
 	if v := find.ID; v != nil {
 		where, args = append(where, fmt.Sprintf("id = $%d", argIndex)), append(args, *v)
-		argIndex++
 	}
 
 	stmt := `
@@ -90,6 +89,10 @@ func (d *DB) ListChatSessions(ctx context.Context, find *store.FindChatSession) 
 			return nil, err
 		}
 		chatSessions = append(chatSessions, &chatSession)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, err
 	}
 
 	return chatSessions, nil
@@ -160,7 +163,6 @@ func (d *DB) DeleteChatSession(ctx context.Context, find *store.FindChatSession)
 	}
 	if v := find.ID; v != nil {
 		where, args = append(where, fmt.Sprintf("id = $%d", argIndex)), append(args, *v)
-		argIndex++
 	}
 
 	stmt := `DELETE FROM chat_session WHERE ` + strings.Join(where, " AND ")
@@ -201,7 +203,6 @@ func (d *DB) ListChatMessages(ctx context.Context, find *store.FindChatMessage) 
 
 	if v := find.SessionID; v != nil {
 		where, args = append(where, fmt.Sprintf("session_id = $%d", argIndex)), append(args, *v)
-		argIndex++
 	}
 
 	stmt := `
@@ -231,6 +232,10 @@ func (d *DB) ListChatMessages(ctx context.Context, find *store.FindChatMessage) 
 			return nil, err
 		}
 		chatMessages = append(chatMessages, &chatMessage)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, err
 	}
 
 	return chatMessages, nil

@@ -128,7 +128,7 @@ func (in *GRPCAuthInterceptor) StreamAuthenticationInterceptor(srv any, ss grpc.
 	return handler(srv, wrappedStream)
 }
 
-// contextWrappedServerStream wraps grpc.ServerStream to use a custom context
+// contextWrappedServerStream wraps grpc.ServerStream to use a custom context.
 type contextWrappedServerStream struct {
 	grpc.ServerStream
 	ctx context.Context

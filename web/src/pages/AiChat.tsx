@@ -26,4 +26,3 @@ const AiChat = observer(() => {
 });
 
 export default AiChat;
- 

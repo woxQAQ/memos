@@ -1,0 +1,136 @@
+syntax = "proto3";
+
+package memos.api.v1;
+
+import "google/api/annotations.proto";
+import "google/protobuf/timestamp.proto";
+
+option go_package = "gen/api/v1";
+
+message ChatMessage {
+  // The role of the message.
+  string role = 1;
+  // The content of the message.
+  string content = 2;
+  // The timestamp when the message was created.
+  google.protobuf.Timestamp created_time = 3;
+}
+
+message ChatSession {
+  // The unique identifier for the session.
+  string uid = 1;
+  // The title of the session.
+  string title = 2;
+  // The timestamp when the session was created.
+  google.protobuf.Timestamp created_time = 3;
+  // The timestamp when the session was last updated.
+  google.protobuf.Timestamp updated_time = 4;
+  // The status of the session.
+  string status = 5;
+  // The messages in the session.
+  repeated ChatMessage messages = 6;
+}
+
+message GenerateContentRequest {
+  // The content of the request.
+  repeated ChatMessage messages = 1;
+  // Optional session UID to save the conversation.
+  string session_uid = 2;
+}
+
+enum StreamEventType {
+  // Default event type for streaming content
+  CONTENT = 0;
+  // Model is ready to start generating
+  MODEL_READY = 1;
+  // Content output is complete
+  OUTPUT_COMPLETE = 2;
+  // Output stream has ended
+  OUTPUT_END = 3;
+  // Session has been updated
+  SESSION_UPDATED = 4;
+  // Title has been generated
+  TITLE_GENERATED = 5;
+}
+
+message GenerateContentResponse {
+  // The type of event in this stream response
+  StreamEventType event_type = 1;
+  // The content of the response (for CONTENT events).
+  string content = 2;
+  // The session information (for SESSION_UPDATED events).
+  optional ChatSession session = 3;
+  // Additional message for the event
+  string message = 4;
+}
+
+message ListChatSessionsRequest {
+  // The maximum number of sessions to return.
+  int32 page_size = 1;
+  // A page token from a previous call.
+  string page_token = 2;
+}
+
+message ListChatSessionsResponse {
+  // The list of sessions.
+  repeated ChatSession sessions = 1;
+  // A token to retrieve the next page of results.
+  string next_page_token = 2;
+}
+
+message GetChatSessionRequest {
+  // The UID of the session to retrieve.
+  string uid = 1;
+}
+
+message UpdateChatSessionRequest {
+  // The UID of the session to update.
+  string uid = 1;
+  // The new title of the session.
+  string title = 2;
+}
+
+message UpdateChatSessionResponse {
+  // The updated session.
+  ChatSession session = 1;
+}
+
+message DeleteChatSessionRequest {
+  // The UID of the session to delete.
+  string uid = 1;
+}
+
+message DeleteChatSessionResponse {}
+
+service AIService {
+  // GenerateContent generates content from the AI.
+  rpc GenerateContent(GenerateContentRequest) returns (stream GenerateContentResponse) {
+    option (google.api.http) = {
+      post: "/api/v1/ai/generate"
+      body: "*"
+    };
+  }
+
+  // ListChatSessions lists chat sessions for the current user.
+  rpc ListChatSessions(ListChatSessionsRequest) returns (ListChatSessionsResponse) {
+    option (google.api.http) = {get: "/api/v1/ai/sessions"};
+  }
+
+  // GetChatSession gets a specific chat session.
+  rpc GetChatSession(GetChatSessionRequest) returns (ChatSession) {
+    option (google.api.http) = {get: "/api/v1/ai/sessions/{uid}"};
+  }
+
+  // UpdateChatSession updates a chat session.
+  rpc UpdateChatSession(UpdateChatSessionRequest) returns (UpdateChatSessionResponse) {
+    option (google.api.http) = {
+      patch: "/api/v1/ai/sessions/{uid}"
+      body: "*"
+    };
+  }
+
+  // DeleteChatSession deletes a chat session.
+  rpc DeleteChatSession(DeleteChatSessionRequest) returns (DeleteChatSessionResponse) {
+    option (google.api.http) = {delete: "/api/v1/ai/sessions/{uid}"};
+  }
+}

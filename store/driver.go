@@ -78,6 +78,17 @@ type Driver interface {
 	ListReactions(ctx context.Context, find *FindReaction) ([]*Reaction, error)
 	DeleteReaction(ctx context.Context, delete *DeleteReaction) error
 
+	// ChatSession related methods.
+	CreateChatSession(ctx context.Context, create *ChatSession) (*ChatSession, error)
+	ListChatSessions(ctx context.Context, find *FindChatSession) ([]*ChatSession, error)
+	GetChatSession(ctx context.Context, find *FindChatSession) (*ChatSession, error)
+	UpdateChatSession(ctx context.Context, update *UpdateChatSession) (*ChatSession, error)
+	DeleteChatSession(ctx context.Context, find *FindChatSession) error
+
+	// ChatMessage related methods.
+	CreateChatMessage(ctx context.Context, create *ChatMessage) (*ChatMessage, error)
+	ListChatMessages(ctx context.Context, find *FindChatMessage) ([]*ChatMessage, error)
+
 	// Shortcut related methods.
 	ConvertExprToSQL(ctx *filter.ConvertContext, expr *exprv1.Expr) error
 }

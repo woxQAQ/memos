@@ -32,6 +32,7 @@ message WorkspaceSetting {
     WorkspaceGeneralSetting general_setting = 2;
     WorkspaceStorageSetting storage_setting = 3;
     WorkspaceMemoRelatedSetting memo_related_setting = 4;
+    WorkspaceAIModelSetting ai_model_setting = 5;
   }
 }
 
@@ -118,6 +119,15 @@ message WorkspaceMemoRelatedSetting {
   bool enable_blur_nsfw_content = 12;
   // nsfw_tags is the list of tags that mark content as NSFW for blurring.
   repeated string nsfw_tags = 13;
+}
+
+message WorkspaceAIModelSetting {
+  // model is the AI model name.
+  string model = 1;
+  // api_key is the API key for the AI model.
+  string api_key = 2;
+  // base_url is the base URL for the AI model.
+  string base_url = 3;
 }
 
 message GetWorkspaceSettingRequest {

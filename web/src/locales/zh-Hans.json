@@ -38,7 +38,7 @@
     "edit": "编辑",
     "email": "邮箱",
     "expand": "展开",
-    "explore": "发现",
+    "explore": "探索",
     "file": "文件",
     "filter": "过滤器",
     "home": "主页",
@@ -51,7 +51,7 @@
     "learn-more": "了解更多",
     "link": "链接",
     "mark": "引用",
-    "memos": "备忘录",
+    "memos": "Memos",
     "name": "名称",
     "new": "新建",
     "nickname": "昵称",
@@ -69,7 +69,7 @@
     "remember-me": "保持登录",
     "rename": "重命名",
     "reset": "重置",
-    "resources": "资源库",
+    "resources": "资源",
     "restore": "恢复",
     "role": "身份",
     "save": "保存",
@@ -96,6 +96,43 @@
     "visibility": "可见性",
     "yourself": "您自己"
   },
+  "ai": {
+    "assistant": "AI 助手",
+    "chat": "AI 聊天",
+    "clear-chat": "清空对话",
+    "failed-to-get-response": "获取 AI 回复失败",
+    "start-conversation": "开始与 AI 助手对话",
+    "type-message": "输入您的消息...",
+    "new-conversation": "新对话",
+    "continue-conversation": "继续对话...",
+    "start-new-conversation": "开始新对话...",
+    "continue-your-conversation": "继续你的对话",
+    "start-first-conversation": "开始第一次对话",
+    "chat-history": "聊天记录",
+    "no-chat-history": "暂无聊天记录",
+    "new-conversation-button": "新建对话",
+    "show-chat-list": "显示会话列表",
+    "hide-chat-list": "隐藏会话列表",
+    "rename": "重命名",
+    "delete": "删除",
+    "delete-conversation": "删除对话",
+    "delete-conversation-confirm": "确定要删除这个对话吗？删除后无法恢复。",
+    "yesterday": "昨天",
+    "days-ago": "{{count}}天前",
+    "load-chat-history-failed": "加载聊天历史失败",
+    "load-chat-messages-failed": "加载聊天记录失败",
+    "create-conversation-failed": "创建新对话失败",
+    "update-conversation-failed": "更新标题失败",
+    "delete-conversation-failed": "删除对话失败",
+    "ai-response-failed": "AI响应失败",
+    "invalid-api-key": "API密钥无效，请在工作区设置中检查您的OpenAI API密钥",
+    "rate-limit-exceeded": "请求频率超限，请稍后再试",
+    "quota-exceeded": "API配额已用完或账单问题，请检查您的OpenAI账户",
+    "ai-config-incomplete": "AI配置不完整，请在工作区设置中配置API密钥、模型和基础URL",
+    "ai-config-not-set": "AI配置未设置，请联系管理员在工作区设置中配置API密钥、模型和基础URL",
+    "sign-in-required": "请先登录以使用AI功能",
+    "message-failed-to-send": "消息发送失败"
+  },
   "days": {
     "fri": "五",
     "mon": "一",
@@ -116,7 +153,7 @@
     "has-task-list": "有待办"
   },
   "inbox": {
-    "memo-comment": "{{user}} 评论了您的“{{memo}}”。",
+    "memo-comment": "{{user}} 评论了您的{{memo}}。",
     "version-update": "新版本 {{version}} 现已推出！"
   },
   "markdown": {
@@ -238,6 +275,16 @@
       "description": "该账号下全部的访问令牌",
       "title": "访问令牌"
     },
+    "ai-section": {
+      "api-key": "API 密钥",
+      "api-key-placeholder": "请输入 OpenAI API 密钥",
+      "base-url": "基础 URL",
+      "base-url-placeholder": "https://api.openai.com/v1",
+      "description": "配置 AI 助手设置",
+      "model-name": "模型名称",
+      "model-name-placeholder": "gpt-3.5-turbo",
+      "title": "AI 助手"
+    },
     "account-section": {
       "change-password": "修改密码",
       "email-note": "可选",
@@ -289,7 +336,7 @@
       "authorization-endpoint": "授权端点（Authorization Endpoint）",
       "client-id": "客户端ID（Client ID）",
       "client-secret": "客户端密钥（Client Secret）",
-      "confirm-delete": "您确定要删除“{{name}}”单点登录配置吗？（此操作不可逆）",
+      "confirm-delete": "您确定要删除{{name}}单点登录配置吗？（此操作不可逆）",
       "create-sso": "创建单点登录",
       "custom": "自定义",
       "delete-sso": "确认删除",
@@ -341,7 +388,7 @@
       "url-prefix-placeholder": "自定义链接前缀，可选",
       "url-suffix": "链接后缀",
       "url-suffix-placeholder": "自定义链接后缀，可选",
-      "warning-text": "您确定要删除存储服务“{{name}}”吗？（此操作不可逆）"
+      "warning-text": "您确定要删除存储服务{{name}}吗？（此操作不可逆）"
     },
     "system": "系统",
     "system-section": {
@@ -359,7 +406,7 @@
       },
       "disable-markdown-shortcuts-in-editor": "禁用编辑器中的 Markdown 快捷键",
       "disable-password-login": "禁用密码登录",
-      "disable-password-login-final-warning": "如果您知道自己在做什么，请输入 \"CONFIRM\"。",
+      "disable-password-login-final-warning": "如果您知道自己在做什么，请输入 CONFIRM。",
       "disable-password-login-warning": "所有用户将无法使用密码登录。如果配置的身份提供程序失效，不在数据库中恢复此设置将无法登录。删除身份提供程序时也要格外小心",
       "disable-public-memos": "禁用公开备忘录",
       "display-with-updated-time": "根据最后修改时间顺序显示",
@@ -397,7 +444,7 @@
   "tag": {
     "all-tags": "全部标签",
     "create-tag": "创建标签",
-    "create-tags-guide": "您可以通过输入 “#标签” 创建标签。",
+    "create-tags-guide": "您可以通过输入 #标签 创建标签。",
     "delete-confirm": "您确定要删除此标签吗?所有相关的备忘录将会被归档。",
     "delete-tag": "删除标签",
     "new-name": "新名称",

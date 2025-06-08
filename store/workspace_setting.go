@@ -37,6 +37,8 @@ func (s *Store) UpsertWorkspaceSetting(ctx context.Context, upsert *storepb.Work
 		valueBytes, err = protojson.Marshal(upsert.GetStorageSetting())
 	} else if upsert.Key == storepb.WorkspaceSettingKey_MEMO_RELATED {
 		valueBytes, err = protojson.Marshal(upsert.GetMemoRelatedSetting())
+	} else if upsert.Key == storepb.WorkspaceSettingKey_AI_MODEL {
+		valueBytes, err = protojson.Marshal(upsert.GetAiModelSetting())
 	} else {
 		return nil, errors.Errorf("unsupported workspace setting key: %v", upsert.Key)
 	}
@@ -208,6 +210,25 @@ func (s *Store) GetWorkspaceStorageSetting(ctx context.Context) (*storepb.Worksp
 	return workspaceStorageSetting, nil
 }
 
+func (s *Store) GetWorkspaceAIModelSetting(ctx context.Context) (*storepb.WorkspaceAIModelSetting, error) {
+	workspaceSetting, err := s.GetWorkspaceSetting(ctx, &FindWorkspaceSetting{
+		Name: storepb.WorkspaceSettingKey_AI_MODEL.String(),
+	})
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to get workspace AI model setting")
+	}
+
+	workspaceAIModelSetting := &storepb.WorkspaceAIModelSetting{}
+	if workspaceSetting != nil {
+		workspaceAIModelSetting = workspaceSetting.GetAiModelSetting()
+	}
+	s.workspaceSettingCache.Set(ctx, storepb.WorkspaceSettingKey_AI_MODEL.String(), &storepb.WorkspaceSetting{
+		Key:   storepb.WorkspaceSettingKey_AI_MODEL,
+		Value: &storepb.WorkspaceSetting_AiModelSetting{AiModelSetting: workspaceAIModelSetting},
+	})
+	return workspaceAIModelSetting, nil
+}
+
 func convertWorkspaceSettingFromRaw(workspaceSettingRaw *WorkspaceSetting) (*storepb.WorkspaceSetting, error) {
 	workspaceSetting := &storepb.WorkspaceSetting{
 		Key: storepb.WorkspaceSettingKey(storepb.WorkspaceSettingKey_value[workspaceSettingRaw.Name]),
@@ -237,6 +258,12 @@ func convertWorkspaceSettingFromRaw(workspaceSettingRaw *WorkspaceSetting) (*sto
 			return nil, err
 		}
 		workspaceSetting.Value = &storepb.WorkspaceSetting_MemoRelatedSetting{MemoRelatedSetting: memoRelatedSetting}
+	case storepb.WorkspaceSettingKey_AI_MODEL.String():
+		aiModelSetting := &storepb.WorkspaceAIModelSetting{}
+		if err := protojsonUnmarshaler.Unmarshal([]byte(workspaceSettingRaw.Value), aiModelSetting); err != nil {
+			return nil, err
+		}
+		workspaceSetting.Value = &storepb.WorkspaceSetting_AiModelSetting{AiModelSetting: aiModelSetting}
 	default:
 		// Skip unsupported workspace setting key.
 		return nil, nil

@@ -18,6 +18,7 @@ export interface WorkspaceSetting {
   generalSetting?: WorkspaceGeneralSetting | undefined;
   storageSetting?: WorkspaceStorageSetting | undefined;
   memoRelatedSetting?: WorkspaceMemoRelatedSetting | undefined;
+  aiModelSetting?: WorkspaceAIModelSetting | undefined;
 }
 
 export interface WorkspaceGeneralSetting {
@@ -148,6 +149,15 @@ export interface WorkspaceMemoRelatedSetting {
   nsfwTags: string[];
 }
 
+export interface WorkspaceAIModelSetting {
+  /** model is the AI model name. */
+  model: string;
+  /** api_key is the API key for the AI model. */
+  apiKey: string;
+  /** base_url is the base URL for the AI model. */
+  baseUrl: string;
+}
+
 export interface GetWorkspaceSettingRequest {
   /**
    * The resource name of the workspace setting.
@@ -162,7 +172,13 @@ export interface SetWorkspaceSettingRequest {
 }
 
 function createBaseWorkspaceSetting(): WorkspaceSetting {
-  return { name: "", generalSetting: undefined, storageSetting: undefined, memoRelatedSetting: undefined };
+  return {
+    name: "",
+    generalSetting: undefined,
+    storageSetting: undefined,
+    memoRelatedSetting: undefined,
+    aiModelSetting: undefined,
+  };
 }
 
 export const WorkspaceSetting: MessageFns<WorkspaceSetting> = {
@@ -178,6 +194,9 @@ export const WorkspaceSetting: MessageFns<WorkspaceSetting> = {
     }
     if (message.memoRelatedSetting !== undefined) {
       WorkspaceMemoRelatedSetting.encode(message.memoRelatedSetting, writer.uint32(34).fork()).join();
+    }
+    if (message.aiModelSetting !== undefined) {
+      WorkspaceAIModelSetting.encode(message.aiModelSetting, writer.uint32(42).fork()).join();
     }
     return writer;
   },
@@ -221,6 +240,14 @@ export const WorkspaceSetting: MessageFns<WorkspaceSetting> = {
           message.memoRelatedSetting = WorkspaceMemoRelatedSetting.decode(reader, reader.uint32());
           continue;
         }
+        case 5: {
+          if (tag !== 42) {
+            break;
+          }
+
+          message.aiModelSetting = WorkspaceAIModelSetting.decode(reader, reader.uint32());
+          continue;
+        }
       }
       if ((tag & 7) === 4 || tag === 0) {
         break;
@@ -244,6 +271,9 @@ export const WorkspaceSetting: MessageFns<WorkspaceSetting> = {
       : undefined;
     message.memoRelatedSetting = (object.memoRelatedSetting !== undefined && object.memoRelatedSetting !== null)
       ? WorkspaceMemoRelatedSetting.fromPartial(object.memoRelatedSetting)
+      : undefined;
+    message.aiModelSetting = (object.aiModelSetting !== undefined && object.aiModelSetting !== null)
+      ? WorkspaceAIModelSetting.fromPartial(object.aiModelSetting)
       : undefined;
     return message;
   },
@@ -840,6 +870,76 @@ export const WorkspaceMemoRelatedSetting: MessageFns<WorkspaceMemoRelatedSetting
     message.disableMarkdownShortcuts = object.disableMarkdownShortcuts ?? false;
     message.enableBlurNsfwContent = object.enableBlurNsfwContent ?? false;
     message.nsfwTags = object.nsfwTags?.map((e) => e) || [];
+    return message;
+  },
+};
+
+function createBaseWorkspaceAIModelSetting(): WorkspaceAIModelSetting {
+  return { model: "", apiKey: "", baseUrl: "" };
+}
+
+export const WorkspaceAIModelSetting: MessageFns<WorkspaceAIModelSetting> = {
+  encode(message: WorkspaceAIModelSetting, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.model !== "") {
+      writer.uint32(10).string(message.model);
+    }
+    if (message.apiKey !== "") {
+      writer.uint32(18).string(message.apiKey);
+    }
+    if (message.baseUrl !== "") {
+      writer.uint32(26).string(message.baseUrl);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): WorkspaceAIModelSetting {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseWorkspaceAIModelSetting();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 10) {
+            break;
+          }
+
+          message.model = reader.string();
+          continue;
+        }
+        case 2: {
+          if (tag !== 18) {
+            break;
+          }
+
+          message.apiKey = reader.string();
+          continue;
+        }
+        case 3: {
+          if (tag !== 26) {
+            break;
+          }
+
+          message.baseUrl = reader.string();
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  create(base?: DeepPartial<WorkspaceAIModelSetting>): WorkspaceAIModelSetting {
+    return WorkspaceAIModelSetting.fromPartial(base ?? {});
+  },
+  fromPartial(object: DeepPartial<WorkspaceAIModelSetting>): WorkspaceAIModelSetting {
+    const message = createBaseWorkspaceAIModelSetting();
+    message.model = object.model ?? "";
+    message.apiKey = object.apiKey ?? "";
+    message.baseUrl = object.baseUrl ?? "";
     return message;
   },
 };

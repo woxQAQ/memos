@@ -132,14 +132,10 @@ const AIChatPanel = observer(() => {
       let sessionAlreadySet = false;
 
       for await (const response of stream) {
-        console.log("Stream event received:", response.eventType, response.message);
-
         switch (response.eventType) {
           case StreamEventType.MODEL_READY:
-            console.log("🤖 Model is ready");
             // 当模型就绪时，如果返回了新会话，立即设置当前会话
             if (response.session && !sessionAlreadySet) {
-              console.log("📝 Session created when model ready:", response.session.uid);
               newSessionCreated = response.session;
               setCurrentSession(response.session);
               sessionAlreadySet = true;
@@ -155,12 +151,10 @@ const AIChatPanel = observer(() => {
             break;
 
           case StreamEventType.OUTPUT_COMPLETE:
-            console.log("✅ Output complete");
             break;
 
           case StreamEventType.SESSION_UPDATED:
             if (response.session) {
-              console.log("📝 Session updated:", response.session.uid);
               newSessionCreated = response.session;
               if (!sessionAlreadySet) {
                 setCurrentSession(response.session);
@@ -171,7 +165,6 @@ const AIChatPanel = observer(() => {
 
           case StreamEventType.TITLE_GENERATED:
             if (response.session) {
-              console.log("📋 Title generated:", response.session.title);
               newSessionCreated = response.session;
               setCurrentSession(response.session);
               // 延迟加载会话列表，避免在流处理中造成状态混乱
@@ -179,7 +172,6 @@ const AIChatPanel = observer(() => {
             break;
 
           case StreamEventType.OUTPUT_END:
-            console.log("🏁 Stream ended");
             break;
 
           default:
@@ -205,7 +197,6 @@ const AIChatPanel = observer(() => {
 
       // 流处理完成后，只刷新会话列表一次
       if (newSessionCreated || sessionToUse) {
-        console.log("📋 Session processing complete, refreshing session list");
         await loadSessions();
       }
     } catch (error: any) {

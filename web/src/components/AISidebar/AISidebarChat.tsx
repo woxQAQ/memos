@@ -62,12 +62,9 @@ const AISidebarChat = observer(({ className }: Props) => {
       let sessionAlreadySet = false;
 
       for await (const response of stream) {
-        console.log("Sidebar chat event:", response.eventType);
-
         switch (response.eventType) {
           case StreamEventType.MODEL_READY:
             if (response.session && !sessionAlreadySet) {
-              console.log("📝 Sidebar session created:", response.session.uid);
               setCurrentSession(response.session);
               sessionAlreadySet = true;
             }
@@ -115,8 +112,6 @@ const AISidebarChat = observer(({ className }: Props) => {
         setMessages((prev) => [...prev, assistantMessage]);
       }
     } catch (error: any) {
-      console.error("Sidebar AI response failed:", error);
-
       let errorMessage = t("ai.ai-response-failed");
       if (error.message) {
         const msg = error.message.toLowerCase();
@@ -141,18 +136,18 @@ const AISidebarChat = observer(({ className }: Props) => {
 
   return (
     <div className={cn("w-full h-full flex flex-col", className)}>
-      {/* 简化的头部 */}
+      {/* 头部 */}
       <div className="flex items-center justify-between p-3 border-b border-gray-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-900">
         <div className="flex items-center gap-2">
           <BotIcon className="w-5 h-5 text-teal-600 dark:text-teal-400" />
-          <h3 className="text-sm font-medium text-gray-900 dark:text-gray-100">AI助手</h3>
+          <h3 className="text-sm font-medium text-gray-900 dark:text-gray-100">{t("ai.assistant")}</h3>
         </div>
         <div className="flex items-center gap-1">
           {messages.length > 0 && (
             <button
               onClick={createNewSession}
               className="p-1.5 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-zinc-700 rounded-lg transition-colors"
-              title="新对话"
+              title={t("ai.new-conversation")}
             >
               <Plus className="w-4 h-4" />
             </button>
@@ -160,7 +155,7 @@ const AISidebarChat = observer(({ className }: Props) => {
           <button
             onClick={() => setConfigDialogOpen(true)}
             className="p-1.5 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-zinc-700 rounded-lg transition-colors"
-            title="设置"
+            title={t("common.settings")}
           >
             <Settings className="w-4 h-4" />
           </button>

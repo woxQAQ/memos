@@ -80,6 +80,64 @@ func (in *GRPCAuthInterceptor) AuthenticationInterceptor(ctx context.Context, re
 	return handler(ctx, request)
 }
 
+// StreamAuthenticationInterceptor is the stream interceptor for gRPC API.
+func (in *GRPCAuthInterceptor) StreamAuthenticationInterceptor(srv any, ss grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) error {
+	ctx := ss.Context()
+	md, ok := metadata.FromIncomingContext(ctx)
+	if !ok {
+		return status.Errorf(codes.Unauthenticated, "failed to parse metadata from incoming context")
+	}
+	accessToken, err := getTokenFromMetadata(md)
+	if err != nil {
+		return status.Errorf(codes.Unauthenticated, "failed to get access token: %v", err)
+	}
+
+	username, err := in.authenticate(ctx, accessToken)
+	if err != nil {
+		if isUnauthorizeAllowedMethod(info.FullMethod) {
+			return handler(srv, ss)
+		}
+		return err
+	}
+	user, err := in.Store.GetUser(ctx, &store.FindUser{
+		Username: &username,
+	})
+	if err != nil {
+		return errors.Wrap(err, "failed to get user")
+	}
+	if user == nil {
+		return errors.Errorf("user %q not exists", username)
+	}
+	if user.RowStatus == store.Archived {
+		return errors.Errorf("user %q is archived", username)
+	}
+	if isOnlyForAdminAllowedMethod(info.FullMethod) && user.Role != store.RoleHost && user.Role != store.RoleAdmin {
+		return errors.Errorf("user %q is not admin", username)
+	}
+
+	// Create a new context with user information
+	newCtx := context.WithValue(ctx, usernameContextKey, username)
+	newCtx = context.WithValue(newCtx, accessTokenContextKey, accessToken)
+
+	// Create a new server stream with the updated context
+	wrappedStream := &contextWrappedServerStream{
+		ServerStream: ss,
+		ctx:          newCtx,
+	}
+
+	return handler(srv, wrappedStream)
+}
+
+// contextWrappedServerStream wraps grpc.ServerStream to use a custom context
+type contextWrappedServerStream struct {
+	grpc.ServerStream
+	ctx context.Context
+}
+
+func (w *contextWrappedServerStream) Context() context.Context {
+	return w.ctx
+}
+
 func (in *GRPCAuthInterceptor) authenticate(ctx context.Context, accessToken string) (string, error) {
 	if accessToken == "" {
 		return "", status.Errorf(codes.Unauthenticated, "access token not found")

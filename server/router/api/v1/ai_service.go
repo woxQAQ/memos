@@ -14,6 +14,7 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	v1pb "github.com/usememos/memos/proto/gen/api/v1"
+	storepb "github.com/usememos/memos/proto/gen/store"
 	"github.com/usememos/memos/store"
 )
 
@@ -69,11 +70,44 @@ func (s *APIV1Service) GenerateContent(request *v1pb.GenerateContentRequest, str
 	client := openai.NewClientWithConfig(config)
 
 	var messages []openai.ChatCompletionMessage
+
+	// Add system message for new conversations to auto-generate titles
+	isNewConversation := session == nil
+	if isNewConversation && len(request.Messages) > 0 {
+		systemPrompt := `You are a helpful AI assistant. For the first message in a conversation, you must follow this exact format:
+
+1. Answer the user's question completely and naturally
+2. Add exactly two line breaks
+3. Add "CONVERSATION_TITLE: " followed by a 2-6 word title that captures the essence of the conversation
+
+IMPORTANT: The title should be concise, descriptive, and without quotes. Always include "CONVERSATION_TITLE: " exactly as shown.
+
+Example format:
+[Your complete answer to the user's question goes here. This can be multiple paragraphs and as long as needed.]
+
+CONVERSATION_TITLE: Python Data Analysis
+
+Remember: Only add the title for the first response in a new conversation.`
+
+		messages = append(messages, openai.ChatCompletionMessage{
+			Role:    "system",
+			Content: systemPrompt,
+		})
+	}
+
 	for _, message := range request.Messages {
 		messages = append(messages, openai.ChatCompletionMessage{
 			Role:    message.Role,
 			Content: message.Content,
 		})
+	}
+
+	// Send MODEL_READY event
+	if err := stream.Send(&v1pb.GenerateContentResponse{
+		EventType: v1pb.StreamEventType_MODEL_READY,
+		Message:   "AI model is ready to generate content",
+	}); err != nil {
+		return status.Errorf(codes.Internal, "failed to send model ready event: %v", err)
 	}
 
 	model := aiModelSetting.Model
@@ -102,6 +136,9 @@ func (s *APIV1Service) GenerateContent(request *v1pb.GenerateContentRequest, str
 
 	// Collect assistant response for saving to session
 	var assistantResponse strings.Builder
+	var createdSession *store.ChatSession
+	var extractedTitle string
+	var cleanContent strings.Builder
 
 	for {
 		response, err := respStream.Recv()
@@ -120,23 +157,85 @@ func (s *APIV1Service) GenerateContent(request *v1pb.GenerateContentRequest, str
 		content := response.Choices[0].Delta.Content
 		assistantResponse.WriteString(content)
 
-		if err := stream.Send(&v1pb.GenerateContentResponse{
-			Content: content,
-		}); err != nil {
-			return status.Errorf(codes.Internal, "failed to send response to client: %v", err)
+		// Check if we've detected a title in the stream
+		fullContent := assistantResponse.String()
+		if strings.Contains(fullContent, "CONVERSATION_TITLE:") && extractedTitle == "" {
+			// Split content and title
+			parts := strings.Split(fullContent, "CONVERSATION_TITLE:")
+			if len(parts) == 2 {
+				contentPart := strings.TrimSpace(parts[0])
+				titlePart := strings.TrimSpace(parts[1])
+
+				// Extract and clean the title (remove any trailing content)
+				titleLines := strings.Split(titlePart, "\n")
+				if len(titleLines) > 0 {
+					extractedTitle = strings.TrimSpace(titleLines[0])
+					fmt.Printf("Title extracted from stream: %s\n", extractedTitle)
+
+					// Send any remaining content up to the title marker
+					previousContent := cleanContent.String()
+					if len(contentPart) > len(previousContent) {
+						newContent := contentPart[len(previousContent):]
+						if newContent != "" {
+							cleanContent.WriteString(newContent)
+							if err := stream.Send(&v1pb.GenerateContentResponse{
+								EventType: v1pb.StreamEventType_CONTENT,
+								Content:   newContent,
+							}); err != nil {
+								return status.Errorf(codes.Internal, "failed to send response to client: %v", err)
+							}
+						}
+					}
+				}
+			}
+		} else if extractedTitle == "" {
+			// Normal content streaming (no title detected yet)
+			cleanContent.WriteString(content)
+			if err := stream.Send(&v1pb.GenerateContentResponse{
+				EventType: v1pb.StreamEventType_CONTENT,
+				Content:   content,
+			}); err != nil {
+				return status.Errorf(codes.Internal, "failed to send response to client: %v", err)
+			}
 		}
+		// If title already extracted, don't send any more content (it's probably part of the title)
+	}
+
+	// Send OUTPUT_COMPLETE event
+	if err := stream.Send(&v1pb.GenerateContentResponse{
+		EventType: v1pb.StreamEventType_OUTPUT_COMPLETE,
+		Message:   "Content generation completed",
+	}); err != nil {
+		return status.Errorf(codes.Internal, "failed to send output complete event: %v", err)
 	}
 
 	// Create session if needed and save messages if AI response is successful
-	if assistantResponse.Len() > 0 {
+	finalContent := assistantResponse.String()
+	if len(finalContent) > 0 {
+		// Clean the content for storage (remove title if present)
+		contentToStore := finalContent
+		if extractedTitle != "" {
+			parts := strings.Split(finalContent, "CONVERSATION_TITLE:")
+			if len(parts) == 2 {
+				contentToStore = strings.TrimSpace(parts[0])
+			}
+		}
+
 		// If no session exists, create one automatically
 		if session == nil {
 			now := time.Now().Unix()
+
+			// Use extracted title or fallback
+			title := "New Conversation"
+			if extractedTitle != "" {
+				title = extractedTitle
+			}
+
 			newSession, err := s.Store.CreateChatSession(ctx, &store.ChatSession{
 				CreatorID: user.ID,
 				CreatedTs: now,
 				UpdatedTs: now,
-				Title:     "New Conversation", // Will be updated with first user message content
+				Title:     title,
 				Status:    "ACTIVE",
 			})
 			if err != nil {
@@ -144,6 +243,7 @@ func (s *APIV1Service) GenerateContent(request *v1pb.GenerateContentRequest, str
 				fmt.Printf("Warning: failed to create new session: %v\n", err)
 			} else {
 				session = newSession
+				createdSession = newSession
 			}
 		}
 
@@ -164,39 +264,136 @@ func (s *APIV1Service) GenerateContent(request *v1pb.GenerateContentRequest, str
 				}
 			}
 
-			// Save assistant response
+			// Save assistant response (clean content without title)
 			_, err := s.Store.CreateChatMessage(ctx, &store.ChatMessage{
 				SessionID: session.ID,
 				CreatedTs: time.Now().Unix(),
 				Role:      "assistant",
-				Content:   assistantResponse.String(),
+				Content:   contentToStore,
 			})
 			if err != nil {
 				fmt.Printf("Warning: failed to save assistant message: %v\n", err)
 			} else {
-				// Update session timestamp and title if this is the first conversation
-				updateData := &store.UpdateChatSession{
+				// Update session timestamp
+				_, err = s.Store.UpdateChatSession(ctx, &store.UpdateChatSession{
 					UID: session.UID,
-				}
-
-				// If this is a new session, set title based on first user message
-				if session.Title == "New Conversation" && len(request.Messages) > 0 {
-					firstUserMessage := request.Messages[0].Content
-					if len(firstUserMessage) > 50 {
-						firstUserMessage = firstUserMessage[:50] + "..."
-					}
-					updateData.Title = &firstUserMessage
-				}
-
-				_, err = s.Store.UpdateChatSession(ctx, updateData)
+				})
 				if err != nil {
-					fmt.Printf("Warning: failed to update session: %v\n", err)
+					fmt.Printf("Warning: failed to update session timestamp: %v\n", err)
+				}
+
+				// Send title generated event if we have an extracted title
+				if createdSession != nil && extractedTitle != "" {
+					if err := stream.Send(&v1pb.GenerateContentResponse{
+						EventType: v1pb.StreamEventType_TITLE_GENERATED,
+						Session:   convertChatSessionToPb(createdSession),
+						Message:   fmt.Sprintf("Title generated: %s", extractedTitle),
+					}); err != nil {
+						fmt.Printf("Warning: failed to send title generated event: %v\n", err)
+					}
+				} else if createdSession != nil && extractedTitle == "" {
+					// Fallback: generate title using traditional method if not extracted from stream
+					fmt.Printf("No title extracted from stream, using fallback method for session %s\n", createdSession.UID)
+					go s.generateAndUpdateSessionTitle(context.Background(), createdSession, request.Messages, contentToStore, aiModelSetting, stream)
 				}
 			}
 		}
 	}
 
+	// Send SESSION_UPDATED event if a new session was created
+	if createdSession != nil {
+		if err := stream.Send(&v1pb.GenerateContentResponse{
+			EventType: v1pb.StreamEventType_SESSION_UPDATED,
+			Session:   convertChatSessionToPb(createdSession),
+			Message:   "New session created",
+		}); err != nil {
+			return status.Errorf(codes.Internal, "failed to send session response to client: %v", err)
+		}
+	}
+
+	// Send OUTPUT_END event to indicate the stream is ending
+	if err := stream.Send(&v1pb.GenerateContentResponse{
+		EventType: v1pb.StreamEventType_OUTPUT_END,
+		Message:   "Stream ended",
+	}); err != nil {
+		return status.Errorf(codes.Internal, "failed to send output end event: %v", err)
+	}
+
 	return nil
+}
+
+// generateAndUpdateSessionTitle generates a concise title for the session using AI
+func (s *APIV1Service) generateAndUpdateSessionTitle(ctx context.Context, session *store.ChatSession, userMessages []*v1pb.ChatMessage, assistantResponse string, aiModelSetting *storepb.WorkspaceAIModelSetting, stream v1pb.AIService_GenerateContentServer) {
+	fmt.Printf("Starting title generation for session %s\n", session.UID)
+	// Create a prompt to generate a concise title
+	userContent := ""
+	if len(userMessages) > 0 {
+		userContent = userMessages[0].Content
+	}
+
+	titlePrompt := fmt.Sprintf(`Generate a short, descriptive title for this conversation. Use 2-5 words, no quotes, be specific about the topic:
+
+User: %s
+Assistant: %s
+
+Title:`, userContent, assistantResponse)
+
+	config := openai.DefaultConfig(aiModelSetting.ApiKey)
+	config.BaseURL = aiModelSetting.BaseUrl
+	client := openai.NewClientWithConfig(config)
+
+	fmt.Printf("Sending title generation request for session %s\n", session.UID)
+	resp, err := client.CreateChatCompletion(ctx, openai.ChatCompletionRequest{
+		Model: aiModelSetting.Model,
+		Messages: []openai.ChatCompletionMessage{
+			{
+				Role:    "user",
+				Content: titlePrompt,
+			},
+		},
+		MaxTokens:   30,
+		Temperature: 0.3,
+	})
+
+	if err != nil {
+		fmt.Printf("Warning: failed to generate title for session %s: %v\n", session.UID, err)
+		return
+	}
+
+	if len(resp.Choices) == 0 || resp.Choices[0].Message.Content == "" {
+		fmt.Printf("Warning: empty title response\n")
+		return
+	}
+
+	// Clean up the generated title
+	title := strings.TrimSpace(resp.Choices[0].Message.Content)
+	title = strings.Trim(title, `"'`)
+	if len(title) > 60 {
+		title = title[:60] + "..."
+	}
+	if title == "" {
+		title = "New Conversation"
+	}
+
+	// Update the session title
+	updatedSession, err := s.Store.UpdateChatSession(ctx, &store.UpdateChatSession{
+		UID:   session.UID,
+		Title: &title,
+	})
+	if err != nil {
+		fmt.Printf("Warning: failed to update session title: %v\n", err)
+	} else {
+		fmt.Printf("Generated title for session %s: %s\n", session.UID, title)
+
+		// Send TITLE_GENERATED event
+		if stream != nil {
+			stream.Send(&v1pb.GenerateContentResponse{
+				EventType: v1pb.StreamEventType_TITLE_GENERATED,
+				Session:   convertChatSessionToPb(updatedSession),
+				Message:   fmt.Sprintf("Title generated: %s", title),
+			})
+		}
+	}
 }
 
 func (s *APIV1Service) ListChatSessions(ctx context.Context, request *v1pb.ListChatSessionsRequest) (*v1pb.ListChatSessionsResponse, error) {

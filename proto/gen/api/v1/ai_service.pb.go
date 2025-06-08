@@ -23,6 +23,70 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
+type StreamEventType int32
+
+const (
+	// Default event type for streaming content
+	StreamEventType_CONTENT StreamEventType = 0
+	// Model is ready to start generating
+	StreamEventType_MODEL_READY StreamEventType = 1
+	// Content output is complete
+	StreamEventType_OUTPUT_COMPLETE StreamEventType = 2
+	// Output stream has ended
+	StreamEventType_OUTPUT_END StreamEventType = 3
+	// Session has been updated
+	StreamEventType_SESSION_UPDATED StreamEventType = 4
+	// Title has been generated
+	StreamEventType_TITLE_GENERATED StreamEventType = 5
+)
+
+// Enum value maps for StreamEventType.
+var (
+	StreamEventType_name = map[int32]string{
+		0: "CONTENT",
+		1: "MODEL_READY",
+		2: "OUTPUT_COMPLETE",
+		3: "OUTPUT_END",
+		4: "SESSION_UPDATED",
+		5: "TITLE_GENERATED",
+	}
+	StreamEventType_value = map[string]int32{
+		"CONTENT":         0,
+		"MODEL_READY":     1,
+		"OUTPUT_COMPLETE": 2,
+		"OUTPUT_END":      3,
+		"SESSION_UPDATED": 4,
+		"TITLE_GENERATED": 5,
+	}
+)
+
+func (x StreamEventType) Enum() *StreamEventType {
+	p := new(StreamEventType)
+	*p = x
+	return p
+}
+
+func (x StreamEventType) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (StreamEventType) Descriptor() protoreflect.EnumDescriptor {
+	return file_api_v1_ai_service_proto_enumTypes[0].Descriptor()
+}
+
+func (StreamEventType) Type() protoreflect.EnumType {
+	return &file_api_v1_ai_service_proto_enumTypes[0]
+}
+
+func (x StreamEventType) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use StreamEventType.Descriptor instead.
+func (StreamEventType) EnumDescriptor() ([]byte, []int) {
+	return file_api_v1_ai_service_proto_rawDescGZIP(), []int{0}
+}
+
 type ChatMessage struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The role of the message.
@@ -232,8 +296,14 @@ func (x *GenerateContentRequest) GetSessionUid() string {
 
 type GenerateContentResponse struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// The content of the response.
-	Content       string `protobuf:"bytes,1,opt,name=content,proto3" json:"content,omitempty"`
+	// The type of event in this stream response
+	EventType StreamEventType `protobuf:"varint,1,opt,name=event_type,json=eventType,proto3,enum=memos.api.v1.StreamEventType" json:"event_type,omitempty"`
+	// The content of the response (for CONTENT events).
+	Content string `protobuf:"bytes,2,opt,name=content,proto3" json:"content,omitempty"`
+	// The session information (for SESSION_UPDATED events).
+	Session *ChatSession `protobuf:"bytes,3,opt,name=session,proto3,oneof" json:"session,omitempty"`
+	// Additional message for the event
+	Message       string `protobuf:"bytes,4,opt,name=message,proto3" json:"message,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -268,9 +338,30 @@ func (*GenerateContentResponse) Descriptor() ([]byte, []int) {
 	return file_api_v1_ai_service_proto_rawDescGZIP(), []int{3}
 }
 
+func (x *GenerateContentResponse) GetEventType() StreamEventType {
+	if x != nil {
+		return x.EventType
+	}
+	return StreamEventType_CONTENT
+}
+
 func (x *GenerateContentResponse) GetContent() string {
 	if x != nil {
 		return x.Content
+	}
+	return ""
+}
+
+func (x *GenerateContentResponse) GetSession() *ChatSession {
+	if x != nil {
+		return x.Session
+	}
+	return nil
+}
+
+func (x *GenerateContentResponse) GetMessage() string {
+	if x != nil {
+		return x.Message
 	}
 	return ""
 }
@@ -627,9 +718,15 @@ const file_api_v1_ai_service_proto_rawDesc = "" +
 	"\x16GenerateContentRequest\x125\n" +
 	"\bmessages\x18\x01 \x03(\v2\x19.memos.api.v1.ChatMessageR\bmessages\x12\x1f\n" +
 	"\vsession_uid\x18\x02 \x01(\tR\n" +
-	"sessionUid\"3\n" +
-	"\x17GenerateContentResponse\x12\x18\n" +
-	"\acontent\x18\x01 \x01(\tR\acontent\"U\n" +
+	"sessionUid\"\xd1\x01\n" +
+	"\x17GenerateContentResponse\x12<\n" +
+	"\n" +
+	"event_type\x18\x01 \x01(\x0e2\x1d.memos.api.v1.StreamEventTypeR\teventType\x12\x18\n" +
+	"\acontent\x18\x02 \x01(\tR\acontent\x128\n" +
+	"\asession\x18\x03 \x01(\v2\x19.memos.api.v1.ChatSessionH\x00R\asession\x88\x01\x01\x12\x18\n" +
+	"\amessage\x18\x04 \x01(\tR\amessageB\n" +
+	"\n" +
+	"\b_session\"U\n" +
 	"\x17ListChatSessionsRequest\x12\x1b\n" +
 	"\tpage_size\x18\x01 \x01(\x05R\bpageSize\x12\x1d\n" +
 	"\n" +
@@ -646,7 +743,15 @@ const file_api_v1_ai_service_proto_rawDesc = "" +
 	"\asession\x18\x01 \x01(\v2\x19.memos.api.v1.ChatSessionR\asession\",\n" +
 	"\x18DeleteChatSessionRequest\x12\x10\n" +
 	"\x03uid\x18\x01 \x01(\tR\x03uid\"\x1b\n" +
-	"\x19DeleteChatSessionResponse2\x9a\x05\n" +
+	"\x19DeleteChatSessionResponse*~\n" +
+	"\x0fStreamEventType\x12\v\n" +
+	"\aCONTENT\x10\x00\x12\x0f\n" +
+	"\vMODEL_READY\x10\x01\x12\x13\n" +
+	"\x0fOUTPUT_COMPLETE\x10\x02\x12\x0e\n" +
+	"\n" +
+	"OUTPUT_END\x10\x03\x12\x13\n" +
+	"\x0fSESSION_UPDATED\x10\x04\x12\x13\n" +
+	"\x0fTITLE_GENERATED\x10\x052\x9a\x05\n" +
 	"\tAIService\x12\x80\x01\n" +
 	"\x0fGenerateContent\x12$.memos.api.v1.GenerateContentRequest\x1a%.memos.api.v1.GenerateContentResponse\"\x1e\x82\xd3\xe4\x93\x02\x18:\x01*\"\x13/api/v1/ai/generate0\x01\x12~\n" +
 	"\x10ListChatSessions\x12%.memos.api.v1.ListChatSessionsRequest\x1a&.memos.api.v1.ListChatSessionsResponse\"\x1b\x82\xd3\xe4\x93\x02\x15\x12\x13/api/v1/ai/sessions\x12s\n" +
@@ -667,44 +772,48 @@ func file_api_v1_ai_service_proto_rawDescGZIP() []byte {
 	return file_api_v1_ai_service_proto_rawDescData
 }
 
+var file_api_v1_ai_service_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
 var file_api_v1_ai_service_proto_msgTypes = make([]protoimpl.MessageInfo, 11)
 var file_api_v1_ai_service_proto_goTypes = []any{
-	(*ChatMessage)(nil),               // 0: memos.api.v1.ChatMessage
-	(*ChatSession)(nil),               // 1: memos.api.v1.ChatSession
-	(*GenerateContentRequest)(nil),    // 2: memos.api.v1.GenerateContentRequest
-	(*GenerateContentResponse)(nil),   // 3: memos.api.v1.GenerateContentResponse
-	(*ListChatSessionsRequest)(nil),   // 4: memos.api.v1.ListChatSessionsRequest
-	(*ListChatSessionsResponse)(nil),  // 5: memos.api.v1.ListChatSessionsResponse
-	(*GetChatSessionRequest)(nil),     // 6: memos.api.v1.GetChatSessionRequest
-	(*UpdateChatSessionRequest)(nil),  // 7: memos.api.v1.UpdateChatSessionRequest
-	(*UpdateChatSessionResponse)(nil), // 8: memos.api.v1.UpdateChatSessionResponse
-	(*DeleteChatSessionRequest)(nil),  // 9: memos.api.v1.DeleteChatSessionRequest
-	(*DeleteChatSessionResponse)(nil), // 10: memos.api.v1.DeleteChatSessionResponse
-	(*timestamppb.Timestamp)(nil),     // 11: google.protobuf.Timestamp
+	(StreamEventType)(0),              // 0: memos.api.v1.StreamEventType
+	(*ChatMessage)(nil),               // 1: memos.api.v1.ChatMessage
+	(*ChatSession)(nil),               // 2: memos.api.v1.ChatSession
+	(*GenerateContentRequest)(nil),    // 3: memos.api.v1.GenerateContentRequest
+	(*GenerateContentResponse)(nil),   // 4: memos.api.v1.GenerateContentResponse
+	(*ListChatSessionsRequest)(nil),   // 5: memos.api.v1.ListChatSessionsRequest
+	(*ListChatSessionsResponse)(nil),  // 6: memos.api.v1.ListChatSessionsResponse
+	(*GetChatSessionRequest)(nil),     // 7: memos.api.v1.GetChatSessionRequest
+	(*UpdateChatSessionRequest)(nil),  // 8: memos.api.v1.UpdateChatSessionRequest
+	(*UpdateChatSessionResponse)(nil), // 9: memos.api.v1.UpdateChatSessionResponse
+	(*DeleteChatSessionRequest)(nil),  // 10: memos.api.v1.DeleteChatSessionRequest
+	(*DeleteChatSessionResponse)(nil), // 11: memos.api.v1.DeleteChatSessionResponse
+	(*timestamppb.Timestamp)(nil),     // 12: google.protobuf.Timestamp
 }
 var file_api_v1_ai_service_proto_depIdxs = []int32{
-	11, // 0: memos.api.v1.ChatMessage.created_time:type_name -> google.protobuf.Timestamp
-	11, // 1: memos.api.v1.ChatSession.created_time:type_name -> google.protobuf.Timestamp
-	11, // 2: memos.api.v1.ChatSession.updated_time:type_name -> google.protobuf.Timestamp
-	0,  // 3: memos.api.v1.ChatSession.messages:type_name -> memos.api.v1.ChatMessage
-	0,  // 4: memos.api.v1.GenerateContentRequest.messages:type_name -> memos.api.v1.ChatMessage
-	1,  // 5: memos.api.v1.ListChatSessionsResponse.sessions:type_name -> memos.api.v1.ChatSession
-	1,  // 6: memos.api.v1.UpdateChatSessionResponse.session:type_name -> memos.api.v1.ChatSession
-	2,  // 7: memos.api.v1.AIService.GenerateContent:input_type -> memos.api.v1.GenerateContentRequest
-	4,  // 8: memos.api.v1.AIService.ListChatSessions:input_type -> memos.api.v1.ListChatSessionsRequest
-	6,  // 9: memos.api.v1.AIService.GetChatSession:input_type -> memos.api.v1.GetChatSessionRequest
-	7,  // 10: memos.api.v1.AIService.UpdateChatSession:input_type -> memos.api.v1.UpdateChatSessionRequest
-	9,  // 11: memos.api.v1.AIService.DeleteChatSession:input_type -> memos.api.v1.DeleteChatSessionRequest
-	3,  // 12: memos.api.v1.AIService.GenerateContent:output_type -> memos.api.v1.GenerateContentResponse
-	5,  // 13: memos.api.v1.AIService.ListChatSessions:output_type -> memos.api.v1.ListChatSessionsResponse
-	1,  // 14: memos.api.v1.AIService.GetChatSession:output_type -> memos.api.v1.ChatSession
-	8,  // 15: memos.api.v1.AIService.UpdateChatSession:output_type -> memos.api.v1.UpdateChatSessionResponse
-	10, // 16: memos.api.v1.AIService.DeleteChatSession:output_type -> memos.api.v1.DeleteChatSessionResponse
-	12, // [12:17] is the sub-list for method output_type
-	7,  // [7:12] is the sub-list for method input_type
-	7,  // [7:7] is the sub-list for extension type_name
-	7,  // [7:7] is the sub-list for extension extendee
-	0,  // [0:7] is the sub-list for field type_name
+	12, // 0: memos.api.v1.ChatMessage.created_time:type_name -> google.protobuf.Timestamp
+	12, // 1: memos.api.v1.ChatSession.created_time:type_name -> google.protobuf.Timestamp
+	12, // 2: memos.api.v1.ChatSession.updated_time:type_name -> google.protobuf.Timestamp
+	1,  // 3: memos.api.v1.ChatSession.messages:type_name -> memos.api.v1.ChatMessage
+	1,  // 4: memos.api.v1.GenerateContentRequest.messages:type_name -> memos.api.v1.ChatMessage
+	0,  // 5: memos.api.v1.GenerateContentResponse.event_type:type_name -> memos.api.v1.StreamEventType
+	2,  // 6: memos.api.v1.GenerateContentResponse.session:type_name -> memos.api.v1.ChatSession
+	2,  // 7: memos.api.v1.ListChatSessionsResponse.sessions:type_name -> memos.api.v1.ChatSession
+	2,  // 8: memos.api.v1.UpdateChatSessionResponse.session:type_name -> memos.api.v1.ChatSession
+	3,  // 9: memos.api.v1.AIService.GenerateContent:input_type -> memos.api.v1.GenerateContentRequest
+	5,  // 10: memos.api.v1.AIService.ListChatSessions:input_type -> memos.api.v1.ListChatSessionsRequest
+	7,  // 11: memos.api.v1.AIService.GetChatSession:input_type -> memos.api.v1.GetChatSessionRequest
+	8,  // 12: memos.api.v1.AIService.UpdateChatSession:input_type -> memos.api.v1.UpdateChatSessionRequest
+	10, // 13: memos.api.v1.AIService.DeleteChatSession:input_type -> memos.api.v1.DeleteChatSessionRequest
+	4,  // 14: memos.api.v1.AIService.GenerateContent:output_type -> memos.api.v1.GenerateContentResponse
+	6,  // 15: memos.api.v1.AIService.ListChatSessions:output_type -> memos.api.v1.ListChatSessionsResponse
+	2,  // 16: memos.api.v1.AIService.GetChatSession:output_type -> memos.api.v1.ChatSession
+	9,  // 17: memos.api.v1.AIService.UpdateChatSession:output_type -> memos.api.v1.UpdateChatSessionResponse
+	11, // 18: memos.api.v1.AIService.DeleteChatSession:output_type -> memos.api.v1.DeleteChatSessionResponse
+	14, // [14:19] is the sub-list for method output_type
+	9,  // [9:14] is the sub-list for method input_type
+	9,  // [9:9] is the sub-list for extension type_name
+	9,  // [9:9] is the sub-list for extension extendee
+	0,  // [0:9] is the sub-list for field type_name
 }
 
 func init() { file_api_v1_ai_service_proto_init() }
@@ -712,18 +821,20 @@ func file_api_v1_ai_service_proto_init() {
 	if File_api_v1_ai_service_proto != nil {
 		return
 	}
+	file_api_v1_ai_service_proto_msgTypes[3].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_api_v1_ai_service_proto_rawDesc), len(file_api_v1_ai_service_proto_rawDesc)),
-			NumEnums:      0,
+			NumEnums:      1,
 			NumMessages:   11,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
 		GoTypes:           file_api_v1_ai_service_proto_goTypes,
 		DependencyIndexes: file_api_v1_ai_service_proto_depIdxs,
+		EnumInfos:         file_api_v1_ai_service_proto_enumTypes,
 		MessageInfos:      file_api_v1_ai_service_proto_msgTypes,
 	}.Build()
 	File_api_v1_ai_service_proto = out.File

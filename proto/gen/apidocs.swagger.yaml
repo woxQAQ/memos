@@ -2800,9 +2800,18 @@ definitions:
   v1GenerateContentResponse:
     type: object
     properties:
+      eventType:
+        $ref: '#/definitions/v1StreamEventType'
+        title: The type of event in this stream response
       content:
         type: string
-        description: The content of the response.
+        description: The content of the response (for CONTENT events).
+      session:
+        $ref: '#/definitions/v1ChatSession'
+        description: The session information (for SESSION_UPDATED events).
+      message:
+        type: string
+        title: Additional message for the event
   v1HTMLElementNode:
     type: object
     properties:
@@ -3341,6 +3350,23 @@ definitions:
       - NORMAL
       - ARCHIVED
     default: STATE_UNSPECIFIED
+  v1StreamEventType:
+    type: string
+    enum:
+      - CONTENT
+      - MODEL_READY
+      - OUTPUT_COMPLETE
+      - OUTPUT_END
+      - SESSION_UPDATED
+      - TITLE_GENERATED
+    default: CONTENT
+    title: |-
+      - CONTENT: Default event type for streaming content
+       - MODEL_READY: Model is ready to start generating
+       - OUTPUT_COMPLETE: Content output is complete
+       - OUTPUT_END: Output stream has ended
+       - SESSION_UPDATED: Session has been updated
+       - TITLE_GENERATED: Title has been generated
   v1StrikethroughNode:
     type: object
     properties:

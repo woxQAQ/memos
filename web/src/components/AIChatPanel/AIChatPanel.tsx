@@ -1,13 +1,14 @@
-import { BotIcon, PanelLeftOpen, PanelLeftClose } from "lucide-react";
+import { BotIcon, PanelLeftOpen, PanelLeftClose, Settings } from "lucide-react";
 import { observer } from "mobx-react-lite";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "react-hot-toast";
+import AIConfigDialog from "@/components/AIChatPanel/AIConfigDialog";
 import ChatInput from "@/components/AIChatPanel/ChatInput";
 import ChatMessage from "@/components/AIChatPanel/ChatMessage";
 import ConfirmDialog from "@/components/AIChatPanel/ConfirmDialog";
 import SessionList from "@/components/AIChatPanel/SessionList";
 import { aiServiceClient } from "@/grpcweb";
-import { ChatMessage as ChatMessageType, GenerateContentRequest, ChatSession } from "@/types/proto/api/v1/ai_service";
+import { ChatMessage as ChatMessageType, GenerateContentRequest, ChatSession, StreamEventType } from "@/types/proto/api/v1/ai_service";
 import { useTranslate } from "@/utils/i18n";
 
 const AIChatPanel = observer(() => {
@@ -20,6 +21,7 @@ const AIChatPanel = observer(() => {
   const [showSessions, setShowSessions] = useState(true);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [sessionToDelete, setSessionToDelete] = useState<string | null>(null);
+  const [configDialogOpen, setConfigDialogOpen] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
@@ -126,16 +128,72 @@ const AIChatPanel = observer(() => {
 
       const stream = aiServiceClient.generateContent(request);
       let accumulatedContent = "";
+      let newSessionCreated: ChatSession | null = null;
+      let sessionAlreadySet = false;
 
       for await (const response of stream) {
-        if (response.content) {
-          accumulatedContent += response.content;
-          setStreamingContent(accumulatedContent);
+        console.log("Stream event received:", response.eventType, response.message);
+
+        switch (response.eventType) {
+          case StreamEventType.MODEL_READY:
+            console.log("🤖 Model is ready");
+            // 当模型就绪时，如果返回了新会话，立即设置当前会话
+            if (response.session && !sessionAlreadySet) {
+              console.log("📝 Session created when model ready:", response.session.uid);
+              newSessionCreated = response.session;
+              setCurrentSession(response.session);
+              sessionAlreadySet = true;
+              // 不要在流处理过程中异步加载会话列表，避免状态混乱
+            }
+            break;
+
+          case StreamEventType.CONTENT:
+            if (response.content) {
+              accumulatedContent += response.content;
+              setStreamingContent(accumulatedContent);
+            }
+            break;
+
+          case StreamEventType.OUTPUT_COMPLETE:
+            console.log("✅ Output complete");
+            break;
+
+          case StreamEventType.SESSION_UPDATED:
+            if (response.session) {
+              console.log("📝 Session updated:", response.session.uid);
+              newSessionCreated = response.session;
+              if (!sessionAlreadySet) {
+                setCurrentSession(response.session);
+                sessionAlreadySet = true;
+              }
+            }
+            break;
+
+          case StreamEventType.TITLE_GENERATED:
+            if (response.session) {
+              console.log("📋 Title generated:", response.session.title);
+              newSessionCreated = response.session;
+              setCurrentSession(response.session);
+              // 延迟加载会话列表，避免在流处理中造成状态混乱
+            }
+            break;
+
+          case StreamEventType.OUTPUT_END:
+            console.log("🏁 Stream ended");
+            break;
+
+          default:
+            // 向后兼容旧版本
+            if (response.content) {
+              accumulatedContent += response.content;
+              setStreamingContent(accumulatedContent);
+            }
+            if (response.session) {
+              newSessionCreated = response.session;
+            }
+            break;
         }
       }
-
-      // 注意：现在我们不在前端创建会话了
-      // 会话创建逻辑应该移动到后端的 GenerateContent 处理中
 
       if (accumulatedContent) {
         const assistantMessage: ChatMessageType = {
@@ -143,11 +201,12 @@ const AIChatPanel = observer(() => {
           content: accumulatedContent,
         };
         setMessages((prev) => [...prev, assistantMessage]);
+      }
 
-        // 如果使用了现有会话，重新加载会话列表
-        if (sessionToUse) {
-          await loadSessions();
-        }
+      // 流处理完成后，只刷新会话列表一次
+      if (newSessionCreated || sessionToUse) {
+        console.log("📋 Session processing complete, refreshing session list");
+        await loadSessions();
       }
     } catch (error: any) {
       console.error("Failed to get AI response:", error);
@@ -206,7 +265,16 @@ const AIChatPanel = observer(() => {
               {showSessions ? <PanelLeftClose className="w-5 h-5" /> : <PanelLeftOpen className="w-5 h-5" />}
             </button>
             <BotIcon className="w-6 h-6 text-gray-800 dark:text-gray-200" />
-            <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100">{currentSession?.title || t("ai.assistant")}</h3>
+            <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100">{currentSession?.title || t("ai.new-conversation")}</h3>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setConfigDialogOpen(true)}
+              className="p-2 text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-zinc-700 rounded-lg transition-colors"
+              title={t("setting.ai-section.title")}
+            >
+              <Settings className="w-5 h-5" />
+            </button>
           </div>
         </div>
 
@@ -256,6 +324,8 @@ const AIChatPanel = observer(() => {
           setSessionToDelete(null);
         }}
       />
+
+      <AIConfigDialog isOpen={configDialogOpen} onClose={() => setConfigDialogOpen(false)} />
     </div>
   );
 });

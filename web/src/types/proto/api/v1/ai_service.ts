@@ -10,6 +10,69 @@ import { Timestamp } from "../../google/protobuf/timestamp";
 
 export const protobufPackage = "memos.api.v1";
 
+export enum StreamEventType {
+  /** CONTENT - Default event type for streaming content */
+  CONTENT = "CONTENT",
+  /** MODEL_READY - Model is ready to start generating */
+  MODEL_READY = "MODEL_READY",
+  /** OUTPUT_COMPLETE - Content output is complete */
+  OUTPUT_COMPLETE = "OUTPUT_COMPLETE",
+  /** OUTPUT_END - Output stream has ended */
+  OUTPUT_END = "OUTPUT_END",
+  /** SESSION_UPDATED - Session has been updated */
+  SESSION_UPDATED = "SESSION_UPDATED",
+  /** TITLE_GENERATED - Title has been generated */
+  TITLE_GENERATED = "TITLE_GENERATED",
+  UNRECOGNIZED = "UNRECOGNIZED",
+}
+
+export function streamEventTypeFromJSON(object: any): StreamEventType {
+  switch (object) {
+    case 0:
+    case "CONTENT":
+      return StreamEventType.CONTENT;
+    case 1:
+    case "MODEL_READY":
+      return StreamEventType.MODEL_READY;
+    case 2:
+    case "OUTPUT_COMPLETE":
+      return StreamEventType.OUTPUT_COMPLETE;
+    case 3:
+    case "OUTPUT_END":
+      return StreamEventType.OUTPUT_END;
+    case 4:
+    case "SESSION_UPDATED":
+      return StreamEventType.SESSION_UPDATED;
+    case 5:
+    case "TITLE_GENERATED":
+      return StreamEventType.TITLE_GENERATED;
+    case -1:
+    case "UNRECOGNIZED":
+    default:
+      return StreamEventType.UNRECOGNIZED;
+  }
+}
+
+export function streamEventTypeToNumber(object: StreamEventType): number {
+  switch (object) {
+    case StreamEventType.CONTENT:
+      return 0;
+    case StreamEventType.MODEL_READY:
+      return 1;
+    case StreamEventType.OUTPUT_COMPLETE:
+      return 2;
+    case StreamEventType.OUTPUT_END:
+      return 3;
+    case StreamEventType.SESSION_UPDATED:
+      return 4;
+    case StreamEventType.TITLE_GENERATED:
+      return 5;
+    case StreamEventType.UNRECOGNIZED:
+    default:
+      return -1;
+  }
+}
+
 export interface ChatMessage {
   /** The role of the message. */
   role: string;
@@ -46,8 +109,16 @@ export interface GenerateContentRequest {
 }
 
 export interface GenerateContentResponse {
-  /** The content of the response. */
+  /** The type of event in this stream response */
+  eventType: StreamEventType;
+  /** The content of the response (for CONTENT events). */
   content: string;
+  /** The session information (for SESSION_UPDATED events). */
+  session?:
+    | ChatSession
+    | undefined;
+  /** Additional message for the event */
+  message: string;
 }
 
 export interface ListChatSessionsRequest {
@@ -324,13 +395,22 @@ export const GenerateContentRequest: MessageFns<GenerateContentRequest> = {
 };
 
 function createBaseGenerateContentResponse(): GenerateContentResponse {
-  return { content: "" };
+  return { eventType: StreamEventType.CONTENT, content: "", session: undefined, message: "" };
 }
 
 export const GenerateContentResponse: MessageFns<GenerateContentResponse> = {
   encode(message: GenerateContentResponse, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.eventType !== StreamEventType.CONTENT) {
+      writer.uint32(8).int32(streamEventTypeToNumber(message.eventType));
+    }
     if (message.content !== "") {
-      writer.uint32(10).string(message.content);
+      writer.uint32(18).string(message.content);
+    }
+    if (message.session !== undefined) {
+      ChatSession.encode(message.session, writer.uint32(26).fork()).join();
+    }
+    if (message.message !== "") {
+      writer.uint32(34).string(message.message);
     }
     return writer;
   },
@@ -343,11 +423,35 @@ export const GenerateContentResponse: MessageFns<GenerateContentResponse> = {
       const tag = reader.uint32();
       switch (tag >>> 3) {
         case 1: {
-          if (tag !== 10) {
+          if (tag !== 8) {
+            break;
+          }
+
+          message.eventType = streamEventTypeFromJSON(reader.int32());
+          continue;
+        }
+        case 2: {
+          if (tag !== 18) {
             break;
           }
 
           message.content = reader.string();
+          continue;
+        }
+        case 3: {
+          if (tag !== 26) {
+            break;
+          }
+
+          message.session = ChatSession.decode(reader, reader.uint32());
+          continue;
+        }
+        case 4: {
+          if (tag !== 34) {
+            break;
+          }
+
+          message.message = reader.string();
           continue;
         }
       }
@@ -364,7 +468,12 @@ export const GenerateContentResponse: MessageFns<GenerateContentResponse> = {
   },
   fromPartial(object: DeepPartial<GenerateContentResponse>): GenerateContentResponse {
     const message = createBaseGenerateContentResponse();
+    message.eventType = object.eventType ?? StreamEventType.CONTENT;
     message.content = object.content ?? "";
+    message.session = (object.session !== undefined && object.session !== null)
+      ? ChatSession.fromPartial(object.session)
+      : undefined;
+    message.message = object.message ?? "";
     return message;
   },
 };

@@ -38,9 +38,30 @@ message GenerateContentRequest {
   string session_uid = 2;
 }
 
+enum StreamEventType {
+  // Default event type for streaming content
+  CONTENT = 0;
+  // Model is ready to start generating
+  MODEL_READY = 1;
+  // Content output is complete
+  OUTPUT_COMPLETE = 2;
+  // Output stream has ended
+  OUTPUT_END = 3;
+  // Session has been updated
+  SESSION_UPDATED = 4;
+  // Title has been generated
+  TITLE_GENERATED = 5;
+}
+
 message GenerateContentResponse {
-  // The content of the response.
-  string content = 1;
+  // The type of event in this stream response
+  StreamEventType event_type = 1;
+  // The content of the response (for CONTENT events).
+  string content = 2;
+  // The session information (for SESSION_UPDATED events).
+  optional ChatSession session = 3;
+  // Additional message for the event
+  string message = 4;
 }
 
 message ListChatSessionsRequest {

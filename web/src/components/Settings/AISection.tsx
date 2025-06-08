@@ -1,4 +1,4 @@
-import { Sheet } from "@mui/joy";
+
 import { Button, Input } from "@usememos/mui";
 import { isEqual } from "lodash-es";
 import { observer } from "mobx-react-lite";
@@ -58,7 +58,7 @@ const AISection = observer(() => {
   return (
     <div className="w-full flex flex-col gap-2 pt-2 pb-4">
       <p className="font-medium text-gray-700 dark:text-gray-500">{t("setting.ai-section.title")}</p>
-      <Sheet variant="outlined" className="w-full flex flex-col justify-start items-start gap-4 p-4 rounded-lg">
+      <div className="w-full flex flex-col justify-start items-start gap-4">
         <div className="w-full flex flex-col justify-start items-start gap-1">
           <span className="text-sm">{t("setting.ai-section.model-name")}</span>
           <Input
@@ -87,7 +87,7 @@ const AISection = observer(() => {
             onChange={(e) => handleSettingChange({ baseUrl: e.target.value })}
           />
         </div>
-      </Sheet>
+      </div>
       <div className="mt-2 w-full flex justify-end">
         <Button color="primary" disabled={isEqual(setting, originalSetting)} onClick={handleSave}>
           {t("common.save")}
@@ -98,3 +98,4 @@ const AISection = observer(() => {
 });
 
 export default AISection;
+ 
